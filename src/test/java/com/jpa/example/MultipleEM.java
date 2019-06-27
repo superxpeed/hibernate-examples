@@ -21,11 +21,14 @@ public class MultipleEM {
     private static EntityManagerFactory mysqlEntityManagerFactory;
     private static EntityManagerFactory postgresEntityManagerFactory;
 
+    // Hibernate DDL: create table CART (CART_ID varchar(255) not null, CART_NAME varchar(255), primary key (CART_ID)) engine=InnoDB
     private static final String mysqlTableCart =    " CREATE TABLE IF NOT EXISTS `CART` ( " +
                                                     " `CART_ID` VARCHAR(32), " +
                                                     " `CART_NAME` VARCHAR(32) NOT NULL DEFAULT '', " +
                                                     " PRIMARY KEY (`CART_ID`) ) ENGINE=InnoDB DEFAULT CHARSET=utf8";
 
+    // Hibernate DDL: create table ITEM (ID varchar(255) not null, ITEM_NAME varchar(255), CART_ID varchar(255) not null, primary key (ID)) engine=InnoDB
+    // Hibernate DDL: alter table ITEM add constraint FKiiemg9iq85055iqpi7q5vkgbu foreign key (CART_ID) references CART (CART_ID)
     private static final String mysqlTableItem =    " CREATE TABLE IF NOT EXISTS  `ITEM` ( " +
                                                     " `ID` VARCHAR(32), " +
                                                     " `ITEM_NAME` VARCHAR(32) NOT NULL DEFAULT '', " +
@@ -35,10 +38,13 @@ public class MultipleEM {
                                                     " CONSTRAINT `item_ibfk_1` FOREIGN KEY (`CART_ID`) REFERENCES `CART` (`CART_ID`) " +
                                                     " ) ENGINE=InnoDB DEFAULT CHARSET=utf8 ";
 
+    // Hibernate DDL: create table CART (CART_ID varchar(255) not null, CART_NAME varchar(255), primary key (CART_ID))
     private static final String postgresTableCart = " CREATE TABLE IF NOT EXISTS CART ( " +
                                                     " CART_ID VARCHAR(32) PRIMARY KEY, " +
                                                     " CART_NAME VARCHAR(32) NOT NULL DEFAULT '' )";
 
+    // Hibernate DDL: create table ITEM (ID varchar(255) not null, ITEM_NAME varchar(255), CART_ID varchar(255) not null, primary key (ID))
+    // Hibernate DDL: alter table if exists ITEM add constraint FKiiemg9iq85055iqpi7q5vkgbu foreign key (CART_ID) references CART
     private static final String postgresTableItem = " CREATE TABLE IF NOT EXISTS ITEM ( " +
                                                     " ID VARCHAR(32) PRIMARY KEY, " +
                                                     " ITEM_NAME VARCHAR(32) NOT NULL DEFAULT '', " +
