@@ -11,7 +11,10 @@ import org.junit.runners.MethodSorters;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
+import javax.persistence.Query;
 
+import java.math.BigInteger;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -82,6 +85,27 @@ public class PostgreSQLPartitioning {
         return "CREATE VIEW TEST." + viewName + " AS SELECT * FROM TEST.MASTER_" + viewName;
     }
 
+    private static void dropAllPartitionsForTable(String table){
+        Query query = postgresEntityManager.createNativeQuery("SELECT relname FROM pg_class WHERE relname LIKE('master\\_" + table +"\\_____\\___\\___')");
+        List list = query.getResultList();
+        if (!list.isEmpty()){
+            postgresEntityManager.getTransaction().begin();
+            for(Object result : list){
+                System.out.println("Dropping " + result + " partition");
+                postgresEntityManager.createNativeQuery("DROP TABLE IF EXISTS TEST." + (String)result).executeUpdate();
+            }
+            postgresEntityManager.getTransaction().commit();
+        }
+    }
+
+    private static boolean checkIfTableExists(String tableName){
+        return ((BigInteger)postgresEntityManager.createNativeQuery("SELECT count(*) FROM pg_class WHERE relname = '" + tableName + "'").getSingleResult()).equals(BigInteger.ONE);
+    }
+
+    private static boolean checkIfFunctionExists(String functionName){
+        return ((BigInteger)postgresEntityManager.createNativeQuery("SELECT count(*) FROM pg_proc WHERE proname = '" + functionName + "'").getSingleResult()).equals(BigInteger.valueOf(2));
+    }
+
     @BeforeClass
     public static void prepareEverything() {
         postgresEntityManagerFactory = Persistence.createEntityManagerFactory("postgres-persistence");
@@ -89,19 +113,38 @@ public class PostgreSQLPartitioning {
         assertTrue(postgresEntityManager.isOpen());
 
         postgresEntityManager.getTransaction().begin();
+        postgresEntityManager.createNativeQuery("CREATE SCHEMA IF NOT EXISTS test").executeUpdate();
+        postgresEntityManager.getTransaction().commit();
+
+        dropAllPartitionsForTable("item");
+        dropAllPartitionsForTable("cart");
+
+        postgresEntityManager.getTransaction().begin();
+        postgresEntityManager.createNativeQuery("DROP VIEW  IF EXISTS TEST.ITEM").executeUpdate();
+        postgresEntityManager.createNativeQuery("DROP VIEW  IF EXISTS TEST.CART").executeUpdate();
+        postgresEntityManager.createNativeQuery("DROP TABLE IF EXISTS TEST.MASTER_ITEM").executeUpdate();
+        postgresEntityManager.createNativeQuery("DROP TABLE IF EXISTS TEST.MASTER_CART").executeUpdate();
+        postgresEntityManager.createNativeQuery("drop function IF EXISTS test.create_partition_and_insert()").executeUpdate();
+        postgresEntityManager.getTransaction().commit();
+
+        // create master tables
+        postgresEntityManager.getTransaction().begin();
         postgresEntityManager.createNativeQuery(postgresTableCart).executeUpdate();
         postgresEntityManager.createNativeQuery(postgresTableItem).executeUpdate();
         postgresEntityManager.getTransaction().commit();
 
+        // create partitioning function
         postgresEntityManager.getTransaction().begin();
         postgresEntityManager.createNativeQuery(createPartitioningFunction).executeUpdate();
         postgresEntityManager.getTransaction().commit();
 
+        // create views for master tables
         postgresEntityManager.getTransaction().begin();
         postgresEntityManager.createNativeQuery(createViewSql("ITEM")).executeUpdate();
         postgresEntityManager.createNativeQuery(createViewSql("CART")).executeUpdate();
         postgresEntityManager.getTransaction().commit();
 
+        // create insertion triggers for views
         postgresEntityManager.getTransaction().begin();
         postgresEntityManager.createNativeQuery(createTriggerSql("ITEM")).executeUpdate();
         postgresEntityManager.createNativeQuery(createTriggerSql("CART")).executeUpdate();
@@ -128,17 +171,30 @@ public class PostgreSQLPartitioning {
         postgresEntityManager.getTransaction().begin();
         postgresEntityManager.persist(cart);
         postgresEntityManager.getTransaction().commit();
+
+        postgresEntityManager.clear();
+
+        CartPartitioned p1 = postgresEntityManager.find(CartPartitioned.class, cart.getId());
+        assertTrue(cart.getId().equals(p1.getId()));
+        assertTrue(cart.getItems().size() == p1.getItems().size());
+
+        assertTrue(checkIfTableExists("master_cart"));
+        assertTrue(checkIfTableExists("master_item"));
+
+        assertTrue(checkIfTableExists("cart"));
+        assertTrue(checkIfTableExists("item"));
+
+        String currentDate = new SimpleDateFormat("_yyyy_MM_dd").format(new Date());
+
+        assertTrue(checkIfTableExists("master_cart" + currentDate));
+        assertTrue(checkIfTableExists("master_item" + currentDate));
+
+        assertTrue(checkIfFunctionExists("create_partition_and_insert"));
     }
 
     @AfterClass
     public static void teardown(){
-        System.out.println("Closing entity managers");
-
-//        postgresEntityManager.getTransaction().begin();
-//        postgresEntityManager.createNativeQuery("DROP TABLE Item").executeUpdate();
-//        postgresEntityManager.createNativeQuery("DROP TABLE Cart").executeUpdate();
-//        postgresEntityManager.getTransaction().commit();
-
+        System.out.println("Closing entity manager");
         postgresEntityManager.close();
     }
 }
