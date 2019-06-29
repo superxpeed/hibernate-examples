@@ -128,5 +128,76 @@ public class ManyToManyExample {
         assertTrue(employee11.getProjects().size() == 2);
         assertTrue(employee22.getProjects().size() == 1);
         assertTrue(((Project)employee22.getProjects().toArray()[0]).getTitle().equals("Project 1 updated"));
+
+        // now let's try to add new Project to all Employees
+        Project project3 = new Project();
+        project3.setTitle("Project 3");
+
+        // single set for ALL employees
+        Set<Project> projects3 = new HashSet<>();
+        projects3.add(project3);
+
+        Set<Employee> employees2 = new HashSet<>();
+
+        Employee employee3 = new Employee();
+        employee3.setFirstName("First name 3");
+        employee3.setLastName("Last name 3");
+        employee3.setProjects(projects3);
+
+        Employee employee4 = new Employee();
+        employee4.setFirstName("First name 4");
+        employee4.setLastName("Last name 4");
+        employee4.setProjects(projects3);
+
+        employees2.add(employee4);
+        employees2.add(employee3);
+
+        project3.setEmployees(employees2);
+
+        postgresEntityManager.getTransaction().begin();
+        postgresEntityManager.persist(employee3);
+        postgresEntityManager.getTransaction().commit();
+
+        postgresEntityManager.getTransaction().begin();
+        postgresEntityManager.persist(employee4);
+        postgresEntityManager.getTransaction().commit();
+
+        Project project4 = new Project();
+        project4.setTitle("Project 4");
+        employee3.getProjects().add(project4);
+
+        // update only ONE entity
+        postgresEntityManager.getTransaction().begin();
+        employee3 = postgresEntityManager.merge(employee3);
+        postgresEntityManager.flush();
+        postgresEntityManager.getTransaction().commit();
+
+        // merge doesn't make project4 managed so we need to add it to EntityManager, but employee3 is updated
+        // so project4.getProjectId() returns null
+        System.out.println("After project4 insertion: " + project4.getProjectId());
+
+        // but employee3's Project set contains only managed entities, so let's find it
+        project4 = employee3.getProjects().stream().filter(x -> x.getTitle().equals("Project 4")).findFirst().get();
+
+        Long employeeId3 = employee3.getEmployeeId();
+        Long employeeId4 = employee4.getEmployeeId();
+
+        Long projectId3 = project3.getProjectId();
+        Long projectId4 = project4.getProjectId();
+
+        postgresEntityManager.clear();
+
+        Employee employee33 = postgresEntityManager.find(Employee.class, employeeId3);
+        Employee employee44 = postgresEntityManager.find(Employee.class, employeeId4);
+
+        Project project33 = postgresEntityManager.find(Project.class, projectId3);
+        Project project44 = postgresEntityManager.find(Project.class, projectId4);
+
+        assertTrue(employee33.getProjects().size() == 2);
+        assertTrue(employee44.getProjects().size() == 2);
+
+        assertTrue(project33.getEmployees().size() == 2);
+        assertTrue(project44.getEmployees().size() == 2);
+
     }
 }
