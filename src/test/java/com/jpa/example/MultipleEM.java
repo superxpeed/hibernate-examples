@@ -117,15 +117,29 @@ public class MultipleEM {
     public void stage2_readBoth() {
         assertTrue(insertedPostgres.get(0).equals(insertedMysql.get(0)));
 
+        /*
+            Hibernate: select cart0_.CART_ID as CART_ID1_0_0_,
+                              cart0_.CART_NAME as CART_NAM2_0_0_,
+                              items1_.CART_ID as CART_ID3_1_1_,
+                              items1_.ID as ID1_1_1_,
+                              items1_.ID as ID1_1_2_,
+                              items1_.CART_ID as CART_ID3_1_2_,
+                              items1_.ITEM_NAME as ITEM_NAM2_1_2_
+                                    from CART cart0_
+                                         left outer join
+                                         ITEM items1_
+                                    on cart0_.CART_ID=items1_.CART_ID where cart0_.CART_ID=?
+
+         */
         postgresEntityManager.clear();
         Cart p1 = postgresEntityManager.find(Cart.class, insertedPostgres.get(0));
         System.out.println("Main entity id: " + p1.getId());
-        System.out.println("Lazy fetching items: " + p1.getItems());
+        System.out.println("Fetched items: " + p1.getItems());
 
         mysqlEntityManager.clear();
         Cart m1 = mysqlEntityManager.find(Cart.class, insertedMysql.get(0));
         System.out.println("Main entity id: " + m1.getId());
-        System.out.println("Lazy fetching items: " + m1.getItems());
+        System.out.println("Fetched items: " + m1.getItems());
 
         assertEquals(m1.getName(), p1.getName());
         assertTrue(CollectionUtils.isEqualCollection(m1.getItems(), p1.getItems()));

@@ -14,6 +14,7 @@ import javax.persistence.Persistence;
 import javax.persistence.Query;
 
 import java.math.BigInteger;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -152,24 +153,68 @@ public class PostgreSQLPartitioning {
     }
 
     @Test
-    public void stage1_insertBoth() {
+    public void stage1_insertBoth() throws ParseException {
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+        Date targetDate1 = dateFormat.parse("2019-06-28");
+        Date targetDate2 = dateFormat.parse("2019-06-29");
+        Date targetDate3 = dateFormat.parse("2019-06-30");
+
         CartPartitioned cart = new CartPartitioned();
         cart.setId(UUID.randomUUID().toString().replace("-",""));
         cart.setName("Test cart");
-        cart.setCreateDate(new Date());
+        cart.setCreateDate(targetDate1);
         List<ItemPartitioned> items=new ArrayList<>();
         for(int i = 0; i < 3; i++){
             ItemPartitioned item = new ItemPartitioned();
             item.setId(UUID.randomUUID().toString().replace("-",""));
             item.setName("Item " + i);
             item.setCart(cart);
-            item.setCreateDate(new Date());
+            item.setCreateDate(targetDate1);
             items.add(item);
         }
         cart.setItems(items);
 
         postgresEntityManager.getTransaction().begin();
         postgresEntityManager.persist(cart);
+        postgresEntityManager.getTransaction().commit();
+
+        CartPartitioned cart2 = new CartPartitioned();
+        cart2.setId(UUID.randomUUID().toString().replace("-",""));
+        cart2.setName("Test cart");
+        cart2.setCreateDate(targetDate2);
+        List<ItemPartitioned> items2=new ArrayList<>();
+        for(int i = 0; i < 3; i++){
+            ItemPartitioned item = new ItemPartitioned();
+            item.setId(UUID.randomUUID().toString().replace("-",""));
+            item.setName("Item " + i);
+            item.setCart(cart2);
+            item.setCreateDate(targetDate2);
+            items2.add(item);
+        }
+        cart2.setItems(items2);
+
+        postgresEntityManager.getTransaction().begin();
+        postgresEntityManager.persist(cart2);
+        postgresEntityManager.getTransaction().commit();
+
+        CartPartitioned cart3 = new CartPartitioned();
+        cart3.setId(UUID.randomUUID().toString().replace("-",""));
+        cart3.setName("Test cart");
+        cart3.setCreateDate(targetDate3);
+        List<ItemPartitioned> items3=new ArrayList<>();
+        for(int i = 0; i < 3; i++){
+            ItemPartitioned item = new ItemPartitioned();
+            item.setId(UUID.randomUUID().toString().replace("-",""));
+            item.setName("Item " + i);
+            item.setCart(cart3);
+            item.setCreateDate(targetDate3);
+            items3.add(item);
+        }
+        cart3.setItems(items3);
+
+        postgresEntityManager.getTransaction().begin();
+        postgresEntityManager.persist(cart3);
         postgresEntityManager.getTransaction().commit();
 
         postgresEntityManager.clear();
@@ -184,11 +229,16 @@ public class PostgreSQLPartitioning {
         assertTrue(checkIfTableExists("cart"));
         assertTrue(checkIfTableExists("item"));
 
-        String currentDate = new SimpleDateFormat("_yyyy_MM_dd").format(new Date());
+        SimpleDateFormat currentDate = new SimpleDateFormat("_yyyy_MM_dd");
 
-        assertTrue(checkIfTableExists("master_cart" + currentDate));
-        assertTrue(checkIfTableExists("master_item" + currentDate));
+        assertTrue(checkIfTableExists("master_cart" + currentDate.format(targetDate1)));
+        assertTrue(checkIfTableExists("master_item" + currentDate.format(targetDate1)));
 
+        assertTrue(checkIfTableExists("master_cart" + currentDate.format(targetDate2)));
+        assertTrue(checkIfTableExists("master_item" + currentDate.format(targetDate2)));
+
+        assertTrue(checkIfTableExists("master_cart" + currentDate.format(targetDate3)));
+        assertTrue(checkIfTableExists("master_item" + currentDate.format(targetDate3)));
         assertTrue(checkIfFunctionExists("create_partition_and_insert"));
     }
 

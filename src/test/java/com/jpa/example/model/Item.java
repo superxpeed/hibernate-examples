@@ -1,6 +1,9 @@
 package com.jpa.example.model;
 
 import lombok.*;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+
 import javax.persistence.*;
 
 @Entity
@@ -20,7 +23,7 @@ public class Item {
     @Column(name = "ITEM_NAME")
     private String name;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumn(name="CART_ID", nullable=false)
     private Cart cart;
 }
